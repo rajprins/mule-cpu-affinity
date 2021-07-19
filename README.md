@@ -12,7 +12,7 @@ Many operating systems provide some mechanism to set the CPU affinity for a proc
 
 Important: CPUs will always have groups of cores that share a cache where thread communication and migration is cheaper. You should ask your infrastructure team to verify what cores shared this cache, so you can avoid unnecessary context switches.
 
-Caveat: Verify with your infrastructure team the existence of other resource allocation policies that can interfere with your CPU affinity configuration.
+Caveat: MacOS does not offer out-of-the-box CPU affinity features as a result of the XNU kernel design.
 
 
 ### On Linux
@@ -27,17 +27,19 @@ In the next example, the CPU affinity is set at restart time:
 
 `taskset -c 0,1 ./mule restart`
 
-Attached to this KB article, you can find a couple of Bash scripts that you can use to monitor and set the affinity if your Mule instance to a set of cores.
+These Bash scripts allow you to monitor and set the affinity of your Mule instance to a set of cores.
 
-The affinity-set script allows you to set the affinity while your Mule instance is executing. The next example will set CPU 0 and 1 to process 1234 and all it's children:
+The `affinity-set` script allows you to set the affinity while your Mule instance is executing. 
+
+Example: set CPU 0 and 1 to process 1234 and all it's children:
 
 `./affinity-set.sh 1234 0,1`
 
-The affinity-monitor shows you the process tree and the cores assigned to each process and sub-process.
+The `affinity-monitor` script shows you the process tree and the cores assigned to each process and sub-process.
 
 `./affinity-monitor.sh 1890`
 
-````
+```
 ***   AFFINITY MONITOR START -  Sun Feb 10 21:02:10 ARST 2013    ***  
 Process tree:  
 mule(1890)---mule(1947)---wrapper-linux-x(2019)-+-java(2021)-+-{java}(2022)  
@@ -87,52 +89,58 @@ pid 2041's current affinity list: 1
 pid 2042's current affinity list: 1
 pid 2043's current affinity list: 1
 pid 2020's current affinity list: 1
-***   AFFINITY MONITOR END -  Sun Feb 10 21:02:10 ARST 2013    *** 
+***   AFFINITY MONITOR END -  Sun Feb 10 21:02:10 ARST 2013    ***  
 ```
 
 
-On Solaris
+### On Solaris
 
 In order to enforce the number of cores used by Mule ESB in Solaris 10 and newer versions, you can try the following procedure:
 
 
 1 - Create a list of available virtual processors running the command psrinfo
 
+```
 ~$ psrinfo
 0 on-line since 09/29/2014 11:53:17
 1 on-line since 09/29/2014 11:53:18
 2 on-line since 09/29/2014 11:53:18
 3 on-line since 09/29/2014 11:53:18
-
+```
 
 2 - Create a processor set using the psrset command, passing as arguments the list of virtual processors where you want to run Mule:
 
+```
 ~$ psrset -c 2-3
 created processor set 1
 processor 2: was not assigned, now 1
 processor 3: was not assigned, now 1
-
+```
 
 3 - Run Mule in the newly created processor set:
 
+```
 ~$ psrset -e 1 ./mule -M-Dmule.mmc.bind.port=8888
+```
 
 Note that you can pass arguments to the command being executed in the processor set.
 
-On Windows
+### On Windows
 
 You can use the "start" command to run the mule.bat executable:
-
+```
 c:\mule\bin> start /affinity n mule 
-
+```
 Where n is the HexAffinity Mask. An affinity mask is a bit mask indicating which CPU Cores a process should use. 
 
 For example, this will give only 2 cores:
 
+```
 c:\mule\bin> start /affinity 3 mule 
-
+```
 The example above will set CPU 0 and CPU 1 to the Mule process. To set a different affinities, for each CPU number you want to run the application, replace 0 (off) with 1 (on) in a binary number that represent all your CPUs and then transform that binary number to hexadecimal. 
 
 For example, for 12 CPU host, if I wanted to run the application only on CPU 0, then the binary number would be 000000000001. To run the application with CPU 0 and CPU 3, I would be 000000001001. Then just transform that binary number to hexadecimal. 000000001001 will be 9, so to run mule with CPU 0 and CPU 3 instead, you can run:
-
+```
 c:\mule\bin> start /affinity 9 mule
+```
